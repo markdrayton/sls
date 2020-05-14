@@ -15,7 +15,6 @@ import (
 )
 
 const urlActivities = "https://www.strava.com/api/v3/athletes/%d/activities?page=%d&per_page=%d"
-const urlAthlete = "https://www.strava.com/api/v3/athletes/%d/stats"
 const urlGear = "https://www.strava.com/api/v3/gear/%s"
 
 type Gear map[string]strava.SummaryGear
