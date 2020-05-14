@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -14,26 +13,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-const urlActivities = "https://www.strava.com/api/v3/athletes/%d/activities?page=%d&per_page=%d"
-const urlGear = "https://www.strava.com/api/v3/gear/%s"
-
 type Gear map[string]strava.SummaryGear
 
 type sls struct {
 	athleteId int64
 	perPage   int
 	pageHint  int
-	sf        *strava.Fetcher
-}
-
-func (s *sls) fetchPage(page int) (strava.Activities, error) {
-	activities := make(strava.Activities, 0, s.perPage)
-	u, _ := url.Parse(fmt.Sprintf(urlActivities, s.athleteId, page, s.perPage))
-	err := s.sf.Fetch(&activities, u)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page %d: %s", page, err)
-	}
-	return activities, nil
+	c         *strava.Client
 }
 
 func (s *sls) fetchActivities() (strava.Activities, error) {
@@ -44,7 +30,7 @@ func (s *sls) fetchActivities() (strava.Activities, error) {
 		i := i // https://git.io/JfGiM
 		g.Go(func() error {
 			// Pages are 1-indexed
-			page, err := s.fetchPage(i + 1)
+			page, err := s.c.ActivityPage(s.athleteId, i+1, s.perPage)
 			if err == nil {
 				pages[i] = page
 				// A short page indicates the last page in the set
@@ -63,7 +49,7 @@ func (s *sls) fetchActivities() (strava.Activities, error) {
 	// Fetch remaining pages serially
 	for complete == false {
 		// Pages are 1-indexed
-		page, err := s.fetchPage(len(pages) + 1)
+		page, err := s.c.ActivityPage(s.athleteId, len(pages)+1, s.perPage)
 		if err != nil {
 			return nil, err
 		}
@@ -82,17 +68,6 @@ func (s *sls) fetchActivities() (strava.Activities, error) {
 	return activities, nil
 }
 
-func (s *sls) fetchGear(id string) (strava.SummaryGear, error) {
-	u, _ := url.Parse(fmt.Sprintf(urlGear, id))
-
-	var g strava.SummaryGear
-	err := s.sf.Fetch(&g, u)
-	if err != nil {
-		return g, err
-	}
-	return g, nil
-}
-
 func (s *sls) fetchGears(activities strava.Activities) (Gear, error) {
 	gearIds := activities.GearIds()
 	gear := make([]strava.SummaryGear, len(gearIds))
@@ -100,7 +75,7 @@ func (s *sls) fetchGears(activities strava.Activities) (Gear, error) {
 	for i, gearId := range gearIds {
 		i, gearId := i, gearId // https://git.io/JfGiM
 		g.Go(func() error {
-			g, err := s.fetchGear(gearId)
+			g, err := s.c.Gear(gearId)
 			if err == nil {
 				gear[i] = g
 			}
@@ -137,10 +112,10 @@ func main() {
 		viper.GetInt64("athlete_id"),
 		viper.GetInt("per_page"),
 		viper.GetInt("page_hint"),
-		strava.NewFetcher(
-			path.Join(confDir, "token"),
-			viper.GetString("client_id"),
+		strava.NewClient(
+			viper.GetInt("client_id"),
 			viper.GetString("client_secret"),
+			path.Join(confDir, "token"),
 		),
 	}
 
