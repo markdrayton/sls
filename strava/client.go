@@ -34,8 +34,8 @@ func (c *Client) ActivityPage(athleteId int64, page, perPage int) (Activities, e
 	return activities, nil
 }
 
-func (c *Client) Gear(id string) (SummaryGear, error) {
-	var gear SummaryGear
+func (c *Client) Gear(id string) (Gear, error) {
+	var gear Gear
 	u, _ := url.Parse(fmt.Sprintf(urlGear, id))
 	err := c.fetch(&gear, u)
 	if err != nil {

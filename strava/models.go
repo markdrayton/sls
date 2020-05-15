@@ -4,7 +4,8 @@ import (
 	"time"
 )
 
-type SummaryGear struct {
+// DetailedGear (https://bit.ly/2zD10Wv)
+type Gear struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
@@ -20,6 +21,7 @@ func (t *Timestamp) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// SummaryActivity (https://bit.ly/3bzRVuE)
 type Activity struct {
 	Id                 int64     `json:"id"`
 	Name               string    `json:"name"`

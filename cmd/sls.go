@@ -15,7 +15,7 @@ import (
 
 const perPage = 100
 
-type Gear map[string]strava.SummaryGear
+type GearMap map[string]strava.Gear
 
 type sls struct {
 	athleteId    int64
@@ -69,9 +69,9 @@ func (s *sls) fetchActivities() (strava.Activities, error) {
 	return activities, nil
 }
 
-func (s *sls) fetchGears(activities strava.Activities) (Gear, error) {
+func (s *sls) fetchGears(activities strava.Activities) (GearMap, error) {
 	gearIds := activities.GearIds()
-	gear := make([]strava.SummaryGear, len(gearIds))
+	gear := make([]strava.Gear, len(gearIds))
 	var g errgroup.Group
 	for i, gearId := range gearIds {
 		i, gearId := i, gearId // https://git.io/JfGiM
@@ -88,7 +88,7 @@ func (s *sls) fetchGears(activities strava.Activities) (Gear, error) {
 		return nil, err
 	}
 
-	gears := make(Gear)
+	gears := make(GearMap)
 	for _, g := range gear {
 		gears[g.Id] = g
 	}
