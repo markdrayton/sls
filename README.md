@@ -22,10 +22,10 @@ $ cat <<EOF > ~/.sls/config.toml
 athlete_id = <id>
 client_id = <client ID>
 client_secret = "<client secret>"
-page_hint = 10
+activity_hint = 1000  # defaults to 100
 EOF
 ```
 
 Paste the JSON token blob into `~/.sls/token`. The config file and token probably shouldn't be world readable.
 
-`page_hint` is the only notable config option. `sls` fetches `page_hint` pages of activities in parallel then fetches any remaining pages of data linearly. Ideally `sls` could figure out how many pages to fetch in parallel on its own but as far as I can tell the Strava API has no way to get the total number of activities. [`getStats`](https://developers.strava.com/docs/reference/#api-Athletes-getStats) returns the number of bike/run/swim activities but these numbers won't include any other activity type. Therefore, you should set `page_hint` to something greater than your total activity count divided by `per_page` (which defaults to 100).
+`activity_hint` is the only notable config option. `sls` fetches the first `activity_hint` activities in parallel, then fetches any remaining pages of activities linearly. Ideally this hint would be unnecessary but as far as I can tell the Strava API has no way to get the total number of activities -- [`getStats`](https://developers.strava.com/docs/reference/#api-Athletes-getStats) returns the number of bike/run/swim activities but these numbers won't include any other activity type. Therefore, you should set `activity_hint` to something greater than your total activity count to ensure all are fetched in parallel.

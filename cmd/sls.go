@@ -13,28 +13,29 @@ import (
 	"github.com/spf13/viper"
 )
 
+const perPage = 100
+
 type Gear map[string]strava.SummaryGear
 
 type sls struct {
-	athleteId int64
-	perPage   int
-	pageHint  int
-	c         *strava.Client
+	athleteId    int64
+	activityHint int
+	c            *strava.Client
 }
 
 func (s *sls) fetchActivities() (strava.Activities, error) {
-	pages := make([]strava.Activities, s.pageHint)
+	pages := make([]strava.Activities, (s.activityHint/perPage)+1)
 	complete := false
 	var g errgroup.Group
-	for i := 0; i < s.pageHint; i++ {
+	for i := 0; i < len(pages); i++ {
 		i := i // https://git.io/JfGiM
 		g.Go(func() error {
 			// Pages are 1-indexed
-			page, err := s.c.ActivityPage(s.athleteId, i+1, s.perPage)
+			page, err := s.c.ActivityPage(s.athleteId, i+1, perPage)
 			if err == nil {
 				pages[i] = page
 				// A short page indicates the last page in the set
-				if len(page) < s.perPage {
+				if len(page) < perPage {
 					complete = true
 				}
 			}
@@ -49,17 +50,17 @@ func (s *sls) fetchActivities() (strava.Activities, error) {
 	// Fetch remaining pages serially
 	for complete == false {
 		// Pages are 1-indexed
-		page, err := s.c.ActivityPage(s.athleteId, len(pages)+1, s.perPage)
+		page, err := s.c.ActivityPage(s.athleteId, len(pages)+1, perPage)
 		if err != nil {
 			return nil, err
 		}
 		pages = append(pages, page)
-		if len(page) < s.perPage {
+		if len(page) < perPage {
 			complete = true
 		}
 	}
 
-	activities := make(strava.Activities, 0, len(pages)*s.pageHint)
+	activities := make(strava.Activities, 0, len(pages)*perPage)
 	for _, page := range pages {
 		activities = append(activities, page...)
 	}
@@ -102,7 +103,7 @@ func main() {
 	}
 	confDir := path.Join(homeDir, ".sls")
 	viper.SetConfigFile(path.Join(confDir, "config.toml"))
-	viper.SetDefault("per_page", 100)
+	viper.SetDefault("activity_hint", 100)
 	err = viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("Couldn't read config: %s", err)
@@ -110,8 +111,7 @@ func main() {
 
 	s := sls{
 		viper.GetInt64("athlete_id"),
-		viper.GetInt("per_page"),
-		viper.GetInt("page_hint"),
+		viper.GetInt("activity_hint"),
 		strava.NewClient(
 			viper.GetInt("client_id"),
 			viper.GetString("client_secret"),
