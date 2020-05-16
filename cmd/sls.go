@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/markdrayton/sls/strava"
+	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -97,6 +98,9 @@ func (s *sls) fetchGears(activities strava.Activities) (GearMap, error) {
 }
 
 func main() {
+	var power *bool = flag.BoolP("power", "p", false, "power-related columns")
+	flag.Parse()
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("Failed to determine home directory")
@@ -128,31 +132,61 @@ func main() {
 		log.Fatalf("fatal error: %s", err)
 	}
 
-	fmt.Printf(
-		"%10s  %10s  %-13s  %5s  %5s  %-26s  %-s\n",
-		"#     Date",
-		"ID",
-		"Type",
-		"Dist",
-		"Elev",
-		"Gear",
-		"Name",
-	)
+	if *power {
+		fmt.Printf(
+			"%10s  %10s  %-13s  %5s  %5s  %4s  %3s  %-26s  %-s\n",
+			"#     Date",
+			"ID",
+			"Type",
+			"Dist",
+			"Elev",
+			"Work",
+			"Pwr",
+			"Gear",
+			"Name",
+		)
+	} else {
+		fmt.Printf(
+			"%10s  %10s  %-13s  %5s  %5s  %-26s  %-s\n",
+			"#     Date",
+			"ID",
+			"Type",
+			"Dist",
+			"Elev",
+			"Gear",
+			"Name",
+		)
+	}
 
 	for _, a := range activities {
 		gearName := ""
 		if val, ok := gears[a.GearId]; ok {
 			gearName = val.Name
 		}
-		fmt.Printf(
-			"%10s  %10d  %-13s  %5.1f  %5.0f  %-26s  %-s\n",
-			a.StartDateLocal[:10],
-			a.Id,
-			a.Type,
-			a.Distance/1000,
-			a.TotalElevationGain,
-			gearName,
-			a.Name,
-		)
+		if *power {
+			fmt.Printf(
+				"%10s  %10d  %-13s  %5.1f  %5.0f  %s  %s  %-26s  %-s\n",
+				a.StartDateLocal[:10],
+				a.Id,
+				a.Type,
+				a.Distance/1000,
+				a.TotalElevationGain,
+				a.FmtWork(4),
+				a.FmtAveragePower(3),
+				gearName,
+				a.Name,
+			)
+		} else {
+			fmt.Printf(
+				"%10s  %10d  %-13s  %5.1f  %5.0f  %-26s  %-s\n",
+				a.StartDateLocal[:10],
+				a.Id,
+				a.Type,
+				a.Distance/1000,
+				a.TotalElevationGain,
+				gearName,
+				a.Name,
+			)
+		}
 	}
 }
