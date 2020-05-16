@@ -159,7 +159,7 @@ func main() {
 	}
 
 	for _, a := range activities {
-		gearName := ""
+		gearName := "-"
 		if val, ok := gears[a.GearId]; ok {
 			gearName = val.Name
 		}
