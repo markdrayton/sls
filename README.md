@@ -17,7 +17,10 @@ If you're an [fzf](https://github.com/junegunn/fzf) fan:
 ```sh
 $ type -f strava
 strava () {
-	      sls | fzf --multi --no-sort --tac --header-lines=1 | awk '{ print "https://www.strava.com/activities/" $2 }' | xargs open
+    sls \
+    | fzf --multi --no-sort --tac --header-lines=1 \
+    | awk '{ print "https://www.strava.com/activities/" $2 }' \
+    | xargs open
 }
 ```
 
