@@ -12,6 +12,15 @@ $ sls
 [..]
 ```
 
+If you're an [fzf](https://github.com/junegunn/fzf) fan:
+
+```sh
+$ type -f strava
+strava () {
+	      sls | fzf --multi --no-sort --tac --header-lines=1 | awk '{ print "https://www.strava.com/activities/" $2 }' | xargs open
+}
+```
+
 ## Configuration
 
 Follow the [Strava API setup guide](https://developers.strava.com/docs/getting-started/). Grab the resulting client ID, client secret, and JSON token blob. Then:
