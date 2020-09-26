@@ -19,10 +19,10 @@ Follow the [Strava API setup guide](https://developers.strava.com/docs/getting-s
 ```sh
 $ mkdir ~/.sls
 $ cat <<EOF > ~/.sls/config.toml
-athlete_id = <id>
+athlete_id = <your athlete ID>
 client_id = <client ID>
 client_secret = "<client secret>"
-activity_hint = 1000  # defaults to 100
+activity_hint = <hint>  # defaults to 100
 EOF
 ```
 
