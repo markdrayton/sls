@@ -24,6 +24,14 @@ strava () {
 }
 ```
 
+## Building
+
+```sh
+$ git clone git@github.com:markdrayton/sls.git
+$ cd sls
+$ go build ./cmd/sls.go
+```
+
 ## Configuration
 
 Follow the [Strava API setup guide](https://developers.strava.com/docs/getting-started/). Grab the resulting client ID, client secret, and JSON token blob. Then:
