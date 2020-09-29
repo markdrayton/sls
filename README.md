@@ -24,7 +24,7 @@ strava () {
 }
 ```
 
-Demo of `sls` + `fzf`:
+Demo of `sls` + `fzf` (click for video):
 
 [![asciicast](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9.png)](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9)
 
