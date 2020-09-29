@@ -12,7 +12,7 @@ $ sls
 [..]
 ```
 
-If you're an [fzf](https://github.com/junegunn/fzf) fan:
+If you're an [fzf](https://github.com/junegunn/fzf) fan this shortcut will allow you to select multiple activities and open them in your browser:
 
 ```sh
 $ type -f strava
@@ -23,6 +23,10 @@ strava () {
     | xargs open
 }
 ```
+
+Demo of `sls` + `fzf`:
+
+[![asciicast](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9.png)](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9)
 
 ## Building
 
