@@ -28,6 +28,36 @@ Demo of `sls` + `fzf` (click for video):
 
 [![asciicast](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9.png)](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9)
 
+Another use: tracking how many kilometers a chain has:
+
+```sh
+$ type -f chain-dist
+chain-dist () {
+    id=$(cat ~/.chain-id)
+    sls | awk -v id=$id '
+        $2 == id {
+            go = 1
+        }
+        {
+            if (go && $6 == "R3") {
+                if ($3 == "VirtualRide") {
+                    vkm += $4
+                }
+                km += $4
+                n++
+            }
+        }
+        END {
+            printf("%d rides, %d km (%d km indoors)\n", n, km, vkm)
+        }'
+}
+
+$ echo 3179772474 > ~/.chain-id  # first activity on new chain
+
+$ chain-dist
+126 rides, 5307 km (2854 km indoors)
+```
+
 ## Building
 
 ```sh
