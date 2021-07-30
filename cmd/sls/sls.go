@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"sort"
+	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -14,100 +17,175 @@ import (
 	"github.com/spf13/viper"
 )
 
-const perPage = 100
+const numWorkers = 20
 
 type GearMap map[string]strava.Gear
 
 type sls struct {
-	athleteId    int64
-	activityHint int
-	c            *strava.Client
+	athleteId     int64
+	activityCache string
+	gearCache     string
+	refreshCache  bool
+	c             *strava.Client
 }
 
-func (s *sls) fetchActivities() (strava.Activities, error) {
-	pages := make([]strava.Activities, (s.activityHint/perPage)+1)
-	complete := false
-	var g errgroup.Group
-	for i := 0; i < len(pages); i++ {
-		i := i // https://git.io/JfGiM
+func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
+	g, ctx := errgroup.WithContext(context.Background())
+	const perPage = 100
+
+	pageNums := make(chan int)
+	pages := make(chan strava.Activities)
+
+	// Producer
+	done := make(chan bool)
+	g.Go(func() error {
+		pageNum := 1
+		for {
+			select {
+			case pageNums <- pageNum:
+				pageNum += 1
+			case <-done:
+				close(pageNums)
+				return nil
+			}
+		}
+	})
+
+	// Workers
+	workers := int32(numWorkers)
+	if epoch.Unix() > 0 {
+		workers = 1
+	}
+
+	for i := 0; i < int(workers); i++ {
 		g.Go(func() error {
-			// Pages are 1-indexed
-			page, err := s.c.ActivityPage(s.athleteId, i+1, perPage)
-			if err == nil {
-				pages[i] = page
-				// A short page indicates the last page in the set
-				if len(page) < perPage {
-					complete = true
+			defer func() {
+				if atomic.AddInt32(&workers, -1) == 0 {
+					close(pages)
+					done <- true
+				}
+			}()
+
+			for pageNum := range pageNums {
+				page, err := s.c.ActivityPage(s.athleteId, epoch, pageNum, perPage)
+				if err != nil {
+					return err
+				}
+				if len(page) == 0 {
+					break // Nothing more to read, worker can exit
+				}
+				select {
+				case pages <- page:
+				case <-ctx.Done():
+					return ctx.Err()
 				}
 			}
-			return err
+			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	// Fetch remaining pages serially
-	for complete == false {
-		// Pages are 1-indexed
-		page, err := s.c.ActivityPage(s.athleteId, len(pages)+1, perPage)
-		if err != nil {
-			return nil, err
+	// Reducer
+	activities := make(strava.Activities, 0, perPage*workers)
+	g.Go(func() error {
+		for page := range pages {
+			activities = append(activities, page...)
 		}
-		pages = append(pages, page)
-		if len(page) < perPage {
-			complete = true
-		}
-	}
+		sort.Sort(activities)
+		return nil
+	})
 
-	activities := make(strava.Activities, 0, len(pages)*perPage)
-	for _, page := range pages {
-		activities = append(activities, page...)
-	}
-
-	sort.Sort(activities)
-	return activities, nil
+	return activities, g.Wait()
 }
 
-func (s *sls) fetchGears(activities strava.Activities) (GearMap, error) {
-	gearIds := activities.GearIds()
-	gear := make([]strava.Gear, len(gearIds))
-	var g errgroup.Group
-	for i, gearId := range gearIds {
-		i, gearId := i, gearId // https://git.io/JfGiM
-		g.Go(func() error {
-			g, err := s.c.Gear(gearId)
-			if err == nil {
-				gear[i] = g
-			}
-			return err
-		})
+func (s *sls) activities() (strava.Activities, error) {
+	cached := s.readActivityCache()
+	epoch := time.Unix(0, 0)
+	if !s.refreshCache && len(cached) > 0 {
+		epoch = cached[len(cached)-1].StartDate
 	}
 
-	if err := g.Wait(); err != nil {
+	new, err := s.fetchActivities(epoch)
+	if err != nil {
 		return nil, err
 	}
 
-	gears := make(GearMap)
-	for _, g := range gear {
-		gears[g.Id] = g
+	return append(cached, new...), nil
+}
+
+func (s *sls) gears(gearIds []string) (GearMap, error) {
+	cached := s.readGearCache()
+	gm := make(GearMap)
+
+	ch := make(chan strava.Gear)
+	go func() {
+		for gear := range ch {
+			gm[gear.Id] = gear
+		}
+	}()
+
+	var g errgroup.Group
+	for _, gearId := range gearIds {
+		gearId := gearId // https://git.io/JfGiM
+		gear, ok := cached[gearId]
+		if !s.refreshCache && ok {
+			ch <- gear
+		} else {
+			g.Go(func() error {
+				gear, err := s.c.Gear(gearId)
+				if err != nil {
+					return err
+				}
+				ch <- gear
+				return nil
+			})
+		}
 	}
 
-	return gears, nil
+	err := g.Wait()
+	close(ch)
+
+	return gm, err
+}
+
+func (s *sls) readActivityCache() strava.Activities {
+	var activities strava.Activities
+	readCache(s.activityCache, &activities)
+	return activities
+}
+
+func (s *sls) writeActivityCache(activities strava.Activities) {
+	if s.activityCache == "" {
+		return
+	}
+	writeCache(s.activityCache, activities)
+}
+
+func (s *sls) readGearCache() GearMap {
+	var gm GearMap
+	readCache(s.gearCache, &gm)
+	return gm
+}
+
+func (s *sls) writeGearCache(gm GearMap) {
+	if s.gearCache == "" {
+		return
+	}
+	writeCache(s.gearCache, gm)
 }
 
 func main() {
 	var power *bool = flag.BoolP("power", "p", false, "power-related columns")
+	var ignoreCache *bool = flag.BoolP("ignore-cache", "i", false, "ignore cache contents")
 	flag.Parse()
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("Failed to determine home directory")
 	}
-	confDir := path.Join(homeDir, ".sls")
-	viper.SetConfigFile(path.Join(confDir, "config.toml"))
-	viper.SetDefault("activity_hint", 100)
+	slsDir := path.Join(homeDir, ".sls")
+	viper.SetConfigFile(path.Join(slsDir, "config.toml"))
+	viper.SetDefault("activity_cache", path.Join(slsDir, "activities.json"))
+	viper.SetDefault("gear_cache", path.Join(slsDir, "gear.json"))
 	err = viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("Couldn't read config: %s", err)
@@ -115,19 +193,22 @@ func main() {
 
 	s := sls{
 		viper.GetInt64("athlete_id"),
-		viper.GetInt("activity_hint"),
+		viper.GetString("activity_cache"),
+		viper.GetString("gear_cache"),
+		*ignoreCache,
 		strava.NewClient(
 			viper.GetInt("client_id"),
 			viper.GetString("client_secret"),
-			path.Join(confDir, "token"),
+			path.Join(slsDir, "token"),
 		),
 	}
 
-	activities, err := s.fetchActivities()
+	activities, err := s.activities()
 	if err != nil {
 		log.Fatalf("fatal error: %s", err)
 	}
-	gears, err := s.fetchGears(activities)
+
+	gears, err := s.gears(activities.GearIds())
 	if err != nil {
 		log.Fatalf("fatal error: %s", err)
 	}
@@ -189,4 +270,7 @@ func main() {
 			)
 		}
 	}
+
+	s.writeActivityCache(activities)
+	s.writeGearCache(gears)
 }

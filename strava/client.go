@@ -6,9 +6,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
-const urlActivities = "https://www.strava.com/api/v3/athletes/%d/activities?page=%d&per_page=%d"
+const urlActivities = "https://www.strava.com/api/v3/athletes/%d/activities?after=%d&page=%d&per_page=%d"
 const urlGear = "https://www.strava.com/api/v3/gear/%s"
 
 type Client struct {
@@ -24,9 +25,9 @@ func NewClient(clientId int, clientSecret, tokenPath string) *Client {
 	}
 }
 
-func (c *Client) ActivityPage(athleteId int64, page, perPage int) (Activities, error) {
+func (c *Client) ActivityPage(athleteId int64, epoch time.Time, page, perPage int) (Activities, error) {
 	activities := make(Activities, 0, perPage)
-	u, _ := url.Parse(fmt.Sprintf(urlActivities, athleteId, page, perPage))
+	u, _ := url.Parse(fmt.Sprintf(urlActivities, athleteId, epoch.Unix(), page, perPage))
 	err := c.fetch(&activities, u)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch page %d: %s", page, err)
