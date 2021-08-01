@@ -21,6 +21,11 @@ const numWorkers = 20
 
 type GearMap map[string]strava.Gear
 
+type DetailedActivity struct {
+	A strava.Activity
+	G strava.Gear
+}
+
 type sls struct {
 	athleteId     int64
 	activityCache string
@@ -240,33 +245,37 @@ func main() {
 	}
 
 	for _, a := range activities {
-		gearName := "-"
-		if val, ok := gears[a.GearId]; ok {
-			gearName = val.Name
+		var gear strava.Gear
+		if _, ok := gears[a.GearId]; ok {
+			gear = gears[a.GearId]
+		} else {
+			gear = strava.Gear{Name: "-"}
 		}
+		da := DetailedActivity{a, gear}
+
 		if *power {
 			fmt.Printf(
 				"%10s  %10d  %-13s  %5.1f  %5.0f  %s  %s  %-26s  %-s\n",
-				a.StartDateLocal[:10],
-				a.Id,
-				a.Type,
-				a.Distance/1000,
-				a.TotalElevationGain,
-				a.FmtWork(4),
-				a.FmtAveragePower(3),
-				gearName,
-				a.Name,
+				da.A.StartDateLocal[:10],
+				da.A.Id,
+				da.A.Type,
+				da.A.Distance/1000,
+				da.A.TotalElevationGain,
+				da.A.FmtWork(4),
+				da.A.FmtAveragePower(3),
+				da.G.Name,
+				da.A.Name,
 			)
 		} else {
 			fmt.Printf(
 				"%10s  %10d  %-13s  %5.1f  %5.0f  %-26s  %-s\n",
-				a.StartDateLocal[:10],
-				a.Id,
-				a.Type,
-				a.Distance/1000,
-				a.TotalElevationGain,
-				gearName,
-				a.Name,
+				da.A.StartDateLocal[:10],
+				da.A.Id,
+				da.A.Type,
+				da.A.Distance/1000,
+				da.A.TotalElevationGain,
+				da.G.Name,
+				da.A.Name,
 			)
 		}
 	}
