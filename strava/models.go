@@ -1,7 +1,6 @@
 package strava
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -26,21 +25,6 @@ type Activity struct {
 	AverageWatts       float64   `json:"average_watts"`
 	DeviceWatts        bool      `json:"device_watts"`
 	ExternalId         string    `json:"external_id"`
-}
-
-func (a Activity) fmtPowerField(w int, f float64) string {
-	if a.DeviceWatts {
-		return fmt.Sprintf("%*.f", w, f)
-	}
-	return fmt.Sprintf("%*s", w, "-")
-}
-
-func (a Activity) FmtAveragePower(w int) string {
-	return a.fmtPowerField(w, a.AverageWatts)
-}
-
-func (a Activity) FmtWork(w int) string {
-	return a.fmtPowerField(w, a.Kilojoules)
 }
 
 type Activities []Activity
