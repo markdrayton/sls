@@ -26,7 +26,7 @@ strava () {
 
 Demo of `sls` + `fzf` (click for video):
 
-[![asciicast](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9.png)](https://asciinema.org/a/mcjHL2Bux1LVhNogpSM2RKhY9)
+[![asciicast](https://asciinema.org/a/428385.png)](https://asciinema.org/a/428385)
 
 Another use: tracking how many kilometers a chain has:
 
@@ -34,36 +34,38 @@ Another use: tracking how many kilometers a chain has:
 $ type -f chain-dist
 chain-dist () {
     id=$(cat ~/.chain-id)
-    sls | awk -v id=$id '
-        $2 == id {
+    sls -j \
+    | jq -r '.[] | "\(.activity.id)\t\(.activity.type)\t\(.activity.external_id)\t\(.gear.name)\t\(.activity.distance)"' \
+    | awk -v id=$id '
+        $1 == id {
             go = 1
         }
         {
-            if (go && $6 == "R3") {
-                if ($3 == "VirtualRide") {
-                    vkm += $4
+            if (go && $4 == "R3") {
+                if ($2 == "VirtualRide" || $3 ~ /^(trainerroad|zwift)/) {
+                    vkm += $5
                 }
-                km += $4
+                km += $5
                 n++
             }
         }
         END {
-            printf("%d rides, %d km (%d km indoors)\n", n, km, vkm)
+            printf("%d rides, %d km (%d km indoors)\n", n, km / 1000, vkm / 1000)
         }'
 }
 
 $ echo 3179772474 > ~/.chain-id  # first activity on new chain
 
 $ chain-dist
-126 rides, 5307 km (2854 km indoors)
+64 rides, 2587 km (1797 km indoors)
 ```
 
 ## Building
 
 ```sh
 $ git clone git@github.com:markdrayton/sls.git
-$ cd sls
-$ go build ./cmd/sls.go
+$ cd sls/cmd/sls
+$ go build
 ```
 
 ## Configuration
@@ -76,10 +78,9 @@ $ cat <<EOF > ~/.sls/config.toml
 athlete_id = <your athlete ID>
 client_id = <client ID>
 client_secret = "<client secret>"
-activity_hint = <hint>  # defaults to 100
 EOF
 ```
 
 Paste the JSON token blob into `~/.sls/token`. The config file and token probably shouldn't be world readable.
 
-`activity_hint` is the only notable config option. `sls` fetches the first `activity_hint` activities in parallel, then fetches any remaining pages of activities linearly. Ideally this hint would be unnecessary but as far as I can tell the Strava API has no way to get the total number of activities -- [`getStats`](https://developers.strava.com/docs/reference/#api-Athletes-getStats) returns the number of bike/run/swim activities but these numbers won't include any other activity type. Therefore, you should set `activity_hint` to something greater than your total activity count to ensure all are fetched in parallel.
+Without an existing cache `sls` will fetch activities in parallel. Once a cache is present it will only fetch activities that have occurred since the latest cached activity. The cache is never automatically dropped so any changes made to cached activities won't be locally reflected. Use `sls -r` to force a cache refresh.
