@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -22,8 +23,8 @@ const numWorkers = 20
 type GearMap map[string]strava.Gear
 
 type DetailedActivity struct {
-	A strava.Activity
-	G strava.Gear
+	A strava.Activity `json:"activity"`
+	G strava.Gear     `json:"gear"`
 }
 
 type sls struct {
@@ -181,6 +182,7 @@ func (s *sls) writeGearCache(gm GearMap) {
 func main() {
 	var power *bool = flag.BoolP("power", "p", false, "power-related columns")
 	var ignoreCache *bool = flag.BoolP("ignore-cache", "i", false, "ignore cache contents")
+	var json_out *bool = flag.BoolP("json", "j", false, "JSON output")
 	flag.Parse()
 
 	homeDir, err := os.UserHomeDir()
@@ -218,32 +220,7 @@ func main() {
 		log.Fatalf("fatal error: %s", err)
 	}
 
-	if *power {
-		fmt.Printf(
-			"%10s  %10s  %-13s  %5s  %5s  %4s  %3s  %-26s  %-s\n",
-			"#     Date",
-			"ID",
-			"Type",
-			"Dist",
-			"Elev",
-			"Work",
-			"Pwr",
-			"Gear",
-			"Name",
-		)
-	} else {
-		fmt.Printf(
-			"%10s  %10s  %-13s  %5s  %5s  %-26s  %-s\n",
-			"#     Date",
-			"ID",
-			"Type",
-			"Dist",
-			"Elev",
-			"Gear",
-			"Name",
-		)
-	}
-
+	detailedActivities := make([]DetailedActivity, 0, len(activities))
 	for _, a := range activities {
 		var gear strava.Gear
 		if _, ok := gears[a.GearId]; ok {
@@ -251,32 +228,20 @@ func main() {
 		} else {
 			gear = strava.Gear{Name: "-"}
 		}
-		da := DetailedActivity{a, gear}
+		detailedActivities = append(detailedActivities, DetailedActivity{a, gear})
+	}
 
-		if *power {
-			fmt.Printf(
-				"%10s  %10d  %-13s  %5.1f  %5.0f  %s  %s  %-26s  %-s\n",
-				da.A.StartDateLocal[:10],
-				da.A.Id,
-				da.A.Type,
-				da.A.Distance/1000,
-				da.A.TotalElevationGain,
-				da.A.FmtWork(4),
-				da.A.FmtAveragePower(3),
-				da.G.Name,
-				da.A.Name,
-			)
-		} else {
-			fmt.Printf(
-				"%10s  %10d  %-13s  %5.1f  %5.0f  %-26s  %-s\n",
-				da.A.StartDateLocal[:10],
-				da.A.Id,
-				da.A.Type,
-				da.A.Distance/1000,
-				da.A.TotalElevationGain,
-				da.G.Name,
-				da.A.Name,
-			)
+	if *json_out {
+		j, err := json.Marshal(detailedActivities)
+		if err != nil {
+			log.Panicf("Coudln't marshal to JSON: %s", err)
+		}
+		fmt.Print(string(j))
+	} else {
+		opts := columnOpts{power: *power}
+		formatter := NewActivityFormatter(opts)
+		for _, line := range formatter.Format(detailedActivities) {
+			fmt.Println(line)
 		}
 	}
 
