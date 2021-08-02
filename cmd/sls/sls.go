@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/markdrayton/sls/strava"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -179,11 +179,11 @@ func (s *sls) writeGearCache(gm GearMap) {
 	writeCache(s.gearCache, gm)
 }
 
-func main() {
-	var power *bool = flag.BoolP("power", "p", false, "power-related columns")
-	var ignoreCache *bool = flag.BoolP("ignore-cache", "i", false, "ignore cache contents")
-	var json_out *bool = flag.BoolP("json", "j", false, "JSON output")
-	flag.Parse()
+func init() {
+	pflag.BoolP("power", "p", false, "show power-related columns")
+	pflag.BoolP("refresh", "r", false, "refresh cache")
+	pflag.BoolP("json", "j", false, "JSON output")
+	pflag.Parse()
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -193,20 +193,26 @@ func main() {
 	viper.SetConfigFile(path.Join(slsDir, "config.toml"))
 	viper.SetDefault("activity_cache", path.Join(slsDir, "activities.json"))
 	viper.SetDefault("gear_cache", path.Join(slsDir, "gear.json"))
+	viper.SetDefault("token_path", path.Join(slsDir, "token"))
+
 	err = viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("Couldn't read config: %s", err)
 	}
 
+	viper.BindPFlags(pflag.CommandLine)
+}
+
+func main() {
 	s := sls{
 		viper.GetInt64("athlete_id"),
 		viper.GetString("activity_cache"),
 		viper.GetString("gear_cache"),
-		*ignoreCache,
+		viper.GetBool("refresh"),
 		strava.NewClient(
 			viper.GetInt("client_id"),
 			viper.GetString("client_secret"),
-			path.Join(slsDir, "token"),
+			viper.GetString("token_path"),
 		),
 	}
 
@@ -231,14 +237,14 @@ func main() {
 		detailedActivities = append(detailedActivities, DetailedActivity{a, gear})
 	}
 
-	if *json_out {
+	if viper.GetBool("json") {
 		j, err := json.Marshal(detailedActivities)
 		if err != nil {
 			log.Panicf("Coudln't marshal to JSON: %s", err)
 		}
 		fmt.Print(string(j))
 	} else {
-		opts := columnOpts{power: *power}
+		opts := columnOpts{power: viper.GetBool("power")}
 		formatter := NewActivityFormatter(opts)
 		for _, line := range formatter.Format(detailedActivities) {
 			fmt.Println(line)
