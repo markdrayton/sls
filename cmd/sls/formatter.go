@@ -18,6 +18,8 @@ const alwaysShow bool = true
 
 type columnOpts struct {
 	power bool
+	time  bool
+	all   bool
 }
 
 type column struct {
@@ -37,10 +39,12 @@ func NewActivityFormatter(opts columnOpts) *ActivityFormatter {
 			{"#     Date", alignRight, alwaysShow, formatDate},
 			{"ID", alignRight, alwaysShow, formatId},
 			{"Type", alignRight, alwaysShow, formatType},
+			{"ExID", alignRight, opts.all, formatExternalId},
 			{"Dist", alignRight, alwaysShow, formatDistance},
 			{"Elev", alignRight, alwaysShow, formatElevation},
-			{"Work", alignRight, opts.power, formatWork},
-			{"AP", alignRight, opts.power, formatAveragePower},
+			{"Work", alignRight, opts.all || opts.power, formatWork},
+			{"AP", alignRight, opts.all || opts.power, formatAveragePower},
+			{"Time", alignRight, opts.all || opts.time, formatTime},
 			{"Gear", alignLeft, alwaysShow, formatGear},
 			{"Name", alignLeft, alwaysShow, formatName},
 		},
@@ -118,6 +122,14 @@ func formatType(af *ActivityFormatter, da DetailedActivity) string {
 	return da.A.Type
 }
 
+func formatExternalId(af *ActivityFormatter, da DetailedActivity) string {
+	if len(da.A.ExternalId) > 0 {
+		return da.A.ExternalId
+	} else {
+		return "-"
+	}
+}
+
 func formatDistance(af *ActivityFormatter, da DetailedActivity) string {
 	return fmt.Sprintf("%4.1f", da.A.Distance/1000)
 }
@@ -140,6 +152,15 @@ func formatAveragePower(af *ActivityFormatter, da DetailedActivity) string {
 	} else {
 		return "-"
 	}
+}
+
+func formatTime(af *ActivityFormatter, da DetailedActivity) string {
+	t := da.A.MovingTime
+	h := t / 3600
+	t = t - (h * 3600)
+	m := t / 60
+	s := t - (m * 60)
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
 func formatGear(af *ActivityFormatter, da DetailedActivity) string {

@@ -20,10 +20,12 @@ type Activity struct {
 	TotalElevationGain float64   `json:"total_elevation_gain"`
 	StartDateLocal     string    `json:"start_date_local"`
 	StartDate          time.Time `json:"start_date"`
+	MovingTime         int       `json:"moving_time"`
 	GearId             string    `json:"gear_id"`
 	Kilojoules         float64   `json:"kilojoules"`
 	AverageWatts       float64   `json:"average_watts"`
 	DeviceWatts        bool      `json:"device_watts"`
+	ExternalId         string    `json:"external_id"`
 }
 
 func (a Activity) fmtPowerField(w int, f float64) string {

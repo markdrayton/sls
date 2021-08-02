@@ -180,6 +180,7 @@ func (s *sls) writeGearCache(gm GearMap) {
 }
 
 func init() {
+	pflag.BoolP("all", "a", false, "show all columns")
 	pflag.BoolP("power", "p", false, "show power-related columns")
 	pflag.BoolP("refresh", "r", false, "refresh cache")
 	pflag.BoolP("json", "j", false, "JSON output")
@@ -244,7 +245,11 @@ func main() {
 		}
 		fmt.Print(string(j))
 	} else {
-		opts := columnOpts{power: viper.GetBool("power")}
+		opts := columnOpts{
+			power: viper.GetBool("power"),
+			time:  viper.GetBool("time"),
+			all:   viper.GetBool("all"),
+		}
 		formatter := NewActivityFormatter(opts)
 		for _, line := range formatter.Format(detailedActivities) {
 			fmt.Println(line)
