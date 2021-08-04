@@ -54,7 +54,7 @@ func (c *Credentials) getToken() error {
 			return err
 		}
 		if isFault(data) {
-			return fmt.Errorf("Got an error response when updating token: %s", string(data))
+			return fmt.Errorf("got an error response when updating token: %s", string(data))
 		}
 		t, err = unmarshalToken(data)
 		if err != nil {
@@ -62,7 +62,7 @@ func (c *Credentials) getToken() error {
 		}
 		err = c.writeToken(data)
 		if err != nil {
-			return fmt.Errorf("Couldn't write token data: %s", err)
+			return fmt.Errorf("couldn't write token data: %s", err)
 		}
 	}
 	c.token = t
@@ -72,7 +72,7 @@ func (c *Credentials) getToken() error {
 func (c *Credentials) readToken() (t token, err error) {
 	data, err := ioutil.ReadFile(c.tokenPath)
 	if err != nil {
-		return t, fmt.Errorf("Couldn't read token data from %s", c.tokenPath)
+		return t, fmt.Errorf("couldn't read token data from %s", c.tokenPath)
 	}
 	t, err = unmarshalToken(data)
 	if err != nil {
@@ -94,12 +94,12 @@ func (c *Credentials) postRefresh(refreshToken string) ([]byte, error) {
 	}
 	resp, err := c.hc.PostForm(urlToken, form)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't refresh token: %s", err)
+		return nil, fmt.Errorf("couldn't refresh token: %s", err)
 	}
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't read token data stream: %s", err)
+		return nil, fmt.Errorf("couldn't read token data stream: %s", err)
 	}
 	return data, nil
 }
@@ -117,7 +117,7 @@ func (t token) isExpired() bool {
 func unmarshalToken(data []byte) (t token, err error) {
 	err = json.Unmarshal(data, &t)
 	if err != nil {
-		return t, fmt.Errorf("Couldn't unmarshal token data: %s", err)
+		return t, fmt.Errorf("couldn't unmarshal token data: %s", err)
 	}
 	return t, err
 }
