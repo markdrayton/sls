@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -9,8 +10,12 @@ import (
 
 func doReadCache(path string, data interface{}) error {
 	f, err := os.Open(path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else {
+			return err
+		}
 	}
 
 	b, err := io.ReadAll(f)
@@ -29,7 +34,7 @@ func doReadCache(path string, data interface{}) error {
 func readCache(path string, data interface{}) error {
 	err := doReadCache(path, data)
 	if err != nil {
-		log.Printf("Couldn't read cache: %s", err)
+		log.Printf("Couldn't read cache from %s: %s", path, err)
 	}
 	return err
 }
