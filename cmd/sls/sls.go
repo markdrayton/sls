@@ -104,9 +104,12 @@ func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
 }
 
 func (s *sls) activities() (strava.Activities, error) {
-	cached := s.readActivityCache()
+	var cached strava.Activities
+	if !s.refreshCache {
+		cached = s.readActivityCache()
+	}
 	epoch := time.Unix(0, 0)
-	if !s.refreshCache && len(cached) > 0 {
+	if len(cached) > 0 {
 		epoch = cached[len(cached)-1].StartDate
 	}
 
@@ -132,6 +135,9 @@ func (s *sls) gears(gearIds []string) (GearMap, error) {
 	var g errgroup.Group
 	for _, gearId := range gearIds {
 		gearId := gearId // https://git.io/JfGiM
+		// Rather than copying the cached values into `gm` unconditonally check to see
+		// if any activities still refer to a cached value, thus automatically pruning
+		// the cache of dangling entries.
 		gear, ok := cached[gearId]
 		if !s.refreshCache && ok {
 			ch <- gear
