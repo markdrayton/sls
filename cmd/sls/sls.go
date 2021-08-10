@@ -248,7 +248,7 @@ func main() {
 	if viper.GetBool("json") {
 		j, err := json.Marshal(detailedActivities)
 		if err != nil {
-			log.Panicf("Coudln't marshal to JSON: %s", err)
+			log.Fatalf("Coudln't marshal to JSON: %s", err)
 		}
 		fmt.Print(string(j))
 	} else {
