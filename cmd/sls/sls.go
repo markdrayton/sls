@@ -39,11 +39,16 @@ func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
 	g, ctx := errgroup.WithContext(context.Background())
 	const perPage = 100
 
+	workers := int32(numWorkers)
+	if epoch.Unix() > 0 {
+		workers = 1
+	}
+
 	pageNums := make(chan int)
 	pages := make(chan strava.Activities)
 
 	// Producer
-	done := make(chan bool)
+	done := make(chan struct{}, workers) // Buffer a done signal from each worker.
 	g.Go(func() error {
 		pageNum := 1
 		for {
@@ -58,17 +63,11 @@ func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
 	})
 
 	// Workers
-	workers := int32(numWorkers)
-	if epoch.Unix() > 0 {
-		workers = 1
-	}
-
 	for i := 0; i < int(workers); i++ {
 		g.Go(func() error {
 			defer func() {
 				if atomic.AddInt32(&workers, -1) == 0 {
 					close(pages)
-					done <- true
 				}
 			}()
 
@@ -77,13 +76,14 @@ func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
 				if err != nil {
 					return err
 				}
-				if len(page) == 0 {
-					break // Nothing more to read, worker can exit
-				}
 				select {
 				case pages <- page:
 				case <-ctx.Done():
 					return ctx.Err()
+				}
+				if len(page) < perPage {
+					done <- struct{}{}
+					return nil // No more work to do.
 				}
 			}
 			return nil
@@ -96,6 +96,7 @@ func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
 		for page := range pages {
 			activities = append(activities, page...)
 		}
+		done <- struct{}{}
 		sort.Sort(activities)
 		return nil
 	})
