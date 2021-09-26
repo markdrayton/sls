@@ -19,6 +19,7 @@ const alwaysShow bool = true
 type columnOpts struct {
 	power bool
 	time  bool
+	start bool
 	all   bool
 }
 
@@ -45,6 +46,7 @@ func NewActivityFormatter(opts columnOpts) *ActivityFormatter {
 			{"Work", alignRight, opts.all || opts.power, formatWork},
 			{"AP", alignRight, opts.all || opts.power, formatAveragePower},
 			{"Time", alignRight, opts.all || opts.time, formatTime},
+			{"Start", alignRight, opts.all || opts.start, formatStartLocation},
 			{"Gear", alignLeft, alwaysShow, formatGear},
 			{"Name", alignLeft, alwaysShow, formatName},
 		},
@@ -161,6 +163,57 @@ func formatTime(af *ActivityFormatter, ca CompositeActivity) string {
 	m := t / 60
 	s := t - (m * 60)
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+
+func formatStartLocation(af *ActivityFormatter, ca CompositeActivity) string {
+	if ca.A.StartLatLng.IsZero() || ca.A.Type == "VirtualRide" || len(ca.SL.Results) == 0 {
+		return "-"
+	}
+
+	component := func(match string) string {
+		for _, ac := range ca.SL.Results[0].AddressComponents {
+			for _, typ := range ac.Types {
+				// Returns first match so only suitable for tags that are
+				// applied to a single component.
+				if typ == match {
+					return ac.ShortName
+				}
+			}
+		}
+		return ""
+	}
+
+	country := component("country")
+	prefs := [][]string{
+		{"locality", "country"},
+		{"postal_town", "country"},
+	}
+
+	switch country {
+	case "BR":
+		prefs = [][]string{
+			{"administrative_area_level_3", "administrative_area_level_1", "country"},
+			{"administrative_area_level_4", "administrative_area_level_1", "country"},
+		}
+	case "IT":
+		prefs = [][]string{{"administrative_area_level_3", "country"}}
+	case "US":
+		prefs = [][]string{{"locality", "administrative_area_level_1", "country"}}
+	}
+
+	for _, pref := range prefs {
+		parts := make([]string, 0)
+		for _, tag := range pref {
+			match := component(tag)
+			if match != "" {
+				parts = append(parts, match)
+			}
+		}
+		if len(parts) == len(pref) {
+			return strings.Join(parts, ", ")
+		}
+	}
+	return "?"
 }
 
 func formatGear(af *ActivityFormatter, ca CompositeActivity) string {

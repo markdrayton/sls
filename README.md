@@ -84,3 +84,5 @@ EOF
 Paste the JSON token blob into `~/.sls/token`. The config file and token probably shouldn't be world readable.
 
 Without an existing cache `sls` will fetch activities in parallel. Once a cache is present it will only fetch activities that have occurred since the latest cached activity. The cache is never automatically dropped so any changes made to cached activities won't be locally reflected. Use `sls -r` to force a cache refresh.
+
+The Strava API doesn't return geocoded start locations (for `sls -s`). `sls` can use the Google Maps API for this purpose by setting a valid `google_maps_api_key` in `config.toml`. To reduce the number of calls to the geocoding API start lat/lng values are rounded to 2km boundaries and the geocoded locations are cached in `~/.sls`.
