@@ -189,6 +189,7 @@ func (s *sls) writeGearCache(gm GearMap) {
 func init() {
 	pflag.BoolP("all", "a", false, "show all columns")
 	pflag.BoolP("power", "p", false, "show power-related columns")
+	pflag.BoolP("time", "t", false, "show activity duration")
 	pflag.BoolP("refresh", "r", false, "refresh cache")
 	pflag.BoolP("json", "j", false, "JSON output")
 	pflag.Parse()
