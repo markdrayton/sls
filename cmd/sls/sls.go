@@ -22,7 +22,7 @@ const numWorkers = 20
 
 type GearMap map[string]strava.Gear
 
-type DetailedActivity struct {
+type CompositeActivity struct {
 	A strava.Activity `json:"activity"`
 	G strava.Gear     `json:"gear"`
 }
@@ -235,7 +235,7 @@ func main() {
 		log.Fatalf("fatal error: %s", err)
 	}
 
-	detailedActivities := make([]DetailedActivity, 0, len(activities))
+	compositeActivities := make([]CompositeActivity, 0, len(activities))
 	for _, a := range activities {
 		var gear strava.Gear
 		if _, ok := gears[a.GearId]; ok {
@@ -243,11 +243,11 @@ func main() {
 		} else {
 			gear = strava.Gear{Name: "-"}
 		}
-		detailedActivities = append(detailedActivities, DetailedActivity{a, gear})
+		compositeActivities = append(compositeActivities, CompositeActivity{a, gear})
 	}
 
 	if viper.GetBool("json") {
-		j, err := json.Marshal(detailedActivities)
+		j, err := json.Marshal(compositeActivities)
 		if err != nil {
 			log.Fatalf("Coudln't marshal to JSON: %s", err)
 		}
@@ -259,7 +259,7 @@ func main() {
 			all:   viper.GetBool("all"),
 		}
 		formatter := NewActivityFormatter(opts)
-		for _, line := range formatter.Format(detailedActivities) {
+		for _, line := range formatter.Format(compositeActivities) {
 			fmt.Println(line)
 		}
 	}

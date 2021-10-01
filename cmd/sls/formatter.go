@@ -26,7 +26,7 @@ type column struct {
 	header string
 	align  alignment
 	show   bool
-	format func(af *ActivityFormatter, da DetailedActivity) string
+	format func(af *ActivityFormatter, ca CompositeActivity) string
 }
 
 type ActivityFormatter struct {
@@ -59,10 +59,10 @@ func (af *ActivityFormatter) headers() []string {
 	return headers
 }
 
-func (af *ActivityFormatter) formatActivity(da DetailedActivity) []string {
+func (af *ActivityFormatter) formatActivity(ca CompositeActivity) []string {
 	cols := make([]string, 0, len(af.columns))
 	for _, col := range af.columns {
-		cols = append(cols, col.format(af, da))
+		cols = append(cols, col.format(af, ca))
 	}
 	return cols
 }
@@ -94,7 +94,7 @@ func (af *ActivityFormatter) columnWidths(lines [][]string) []int {
 	return widths
 }
 
-func (af *ActivityFormatter) Format(activities []DetailedActivity) []string {
+func (af *ActivityFormatter) Format(activities []CompositeActivity) []string {
 	lines := make([][]string, 0, len(activities)+1)
 	lines = append(lines, af.headers())
 	for _, da := range activities {
@@ -110,52 +110,52 @@ func (af *ActivityFormatter) Format(activities []DetailedActivity) []string {
 	return output
 }
 
-func formatDate(af *ActivityFormatter, da DetailedActivity) string {
-	return da.A.StartDateLocal[:10]
+func formatDate(af *ActivityFormatter, ca CompositeActivity) string {
+	return ca.A.StartDateLocal[:10]
 }
 
-func formatId(af *ActivityFormatter, da DetailedActivity) string {
-	return strconv.FormatInt(da.A.Id, 10)
+func formatId(af *ActivityFormatter, ca CompositeActivity) string {
+	return strconv.FormatInt(ca.A.Id, 10)
 }
 
-func formatType(af *ActivityFormatter, da DetailedActivity) string {
-	return da.A.Type
+func formatType(af *ActivityFormatter, ca CompositeActivity) string {
+	return ca.A.Type
 }
 
-func formatExternalId(af *ActivityFormatter, da DetailedActivity) string {
-	if len(da.A.ExternalId) > 0 {
-		return da.A.ExternalId
+func formatExternalId(af *ActivityFormatter, ca CompositeActivity) string {
+	if len(ca.A.ExternalId) > 0 {
+		return ca.A.ExternalId
 	} else {
 		return "-"
 	}
 }
 
-func formatDistance(af *ActivityFormatter, da DetailedActivity) string {
-	return fmt.Sprintf("%4.1f", da.A.Distance/1000)
+func formatDistance(af *ActivityFormatter, ca CompositeActivity) string {
+	return fmt.Sprintf("%4.1f", ca.A.Distance/1000)
 }
 
-func formatElevation(af *ActivityFormatter, da DetailedActivity) string {
-	return fmt.Sprintf("%4.0f", da.A.TotalElevationGain)
+func formatElevation(af *ActivityFormatter, ca CompositeActivity) string {
+	return fmt.Sprintf("%4.0f", ca.A.TotalElevationGain)
 }
 
-func formatWork(af *ActivityFormatter, da DetailedActivity) string {
-	if da.A.DeviceWatts {
-		return fmt.Sprintf("%4.0f", da.A.Kilojoules)
+func formatWork(af *ActivityFormatter, ca CompositeActivity) string {
+	if ca.A.DeviceWatts {
+		return fmt.Sprintf("%4.0f", ca.A.Kilojoules)
 	} else {
 		return "-"
 	}
 }
 
-func formatAveragePower(af *ActivityFormatter, da DetailedActivity) string {
-	if da.A.DeviceWatts {
-		return fmt.Sprintf("%4.0f", da.A.AverageWatts)
+func formatAveragePower(af *ActivityFormatter, ca CompositeActivity) string {
+	if ca.A.DeviceWatts {
+		return fmt.Sprintf("%4.0f", ca.A.AverageWatts)
 	} else {
 		return "-"
 	}
 }
 
-func formatTime(af *ActivityFormatter, da DetailedActivity) string {
-	t := da.A.MovingTime
+func formatTime(af *ActivityFormatter, ca CompositeActivity) string {
+	t := ca.A.MovingTime
 	h := t / 3600
 	t = t - (h * 3600)
 	m := t / 60
@@ -163,10 +163,10 @@ func formatTime(af *ActivityFormatter, da DetailedActivity) string {
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
-func formatGear(af *ActivityFormatter, da DetailedActivity) string {
-	return da.G.Name
+func formatGear(af *ActivityFormatter, ca CompositeActivity) string {
+	return ca.G.Name
 }
 
-func formatName(af *ActivityFormatter, da DetailedActivity) string {
-	return da.A.Name
+func formatName(af *ActivityFormatter, ca CompositeActivity) string {
+	return ca.A.Name
 }
