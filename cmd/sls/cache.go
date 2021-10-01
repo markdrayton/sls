@@ -72,7 +72,7 @@ func doWriteCache(path string, data interface{}) error {
 func writeCache(path string, data interface{}) error {
 	err := doWriteCache(path, data)
 	if err != nil {
-		log.Printf("Couldn't write cache: %s", err)
+		log.Printf("Couldn't write cache to %s: %s", path, err)
 	}
 	return err
 }
