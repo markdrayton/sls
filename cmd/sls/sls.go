@@ -122,7 +122,23 @@ func (s *sls) activities() (strava.Activities, error) {
 	return append(cached, new...), nil
 }
 
-func (s *sls) gears(gearIds []string) (GearMap, error) {
+// Return a list of unique gear IDs
+func gearIds(a strava.Activities) []string {
+	gearIDMap := make(map[string]struct{})
+	for _, activity := range a {
+		if activity.GearId != "" {
+			gearIDMap[activity.GearId] = struct{}{}
+		}
+	}
+
+	gearIds := make([]string, 0, len(gearIDMap))
+	for id := range gearIDMap {
+		gearIds = append(gearIds, id)
+	}
+	return gearIds
+}
+
+func (s *sls) gears(a strava.Activities) (GearMap, error) {
 	cached := s.readGearCache()
 	gm := make(GearMap)
 
@@ -134,7 +150,7 @@ func (s *sls) gears(gearIds []string) (GearMap, error) {
 	}()
 
 	var g errgroup.Group
-	for _, gearId := range gearIds {
+	for _, gearId := range gearIds(a) {
 		gearId := gearId // https://git.io/JfGiM
 		// Rather than copying the cached values into `gm` unconditonally check to see
 		// if any activities still refer to a cached value, thus automatically pruning
@@ -224,7 +240,7 @@ func main() {
 		log.Fatalf("fatal error: %s", err)
 	}
 
-	gears, err := s.gears(activities.GearIds())
+	gears, err := s.gears(activities)
 	if err != nil {
 		log.Fatalf("fatal error: %s", err)
 	}

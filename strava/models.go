@@ -29,20 +29,6 @@ type Activity struct {
 
 type Activities []Activity
 
-func (a Activities) GearIds() []string {
-	gearMap := make(map[string]bool)
-	for _, activity := range a {
-		if len(activity.GearId) > 0 {
-			gearMap[activity.GearId] = true
-		}
-	}
-	gearIds := make([]string, 0, len(gearMap))
-	for id := range gearMap {
-		gearIds = append(gearIds, id)
-	}
-	return gearIds
-}
-
 func (a Activities) Len() int           { return len(a) }
 func (a Activities) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Activities) Less(i, j int) bool { return a[i].StartDate.Before(a[j].StartDate) }
