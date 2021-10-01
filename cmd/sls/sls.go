@@ -167,9 +167,6 @@ func (s *sls) readActivityCache() strava.Activities {
 }
 
 func (s *sls) writeActivityCache(activities strava.Activities) {
-	if s.activityCache == "" {
-		return
-	}
 	writeCache(s.activityCache, activities)
 }
 
@@ -180,9 +177,6 @@ func (s *sls) readGearCache() GearMap {
 }
 
 func (s *sls) writeGearCache(gm GearMap) {
-	if s.gearCache == "" {
-		return
-	}
 	writeCache(s.gearCache, gm)
 }
 

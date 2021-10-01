@@ -9,6 +9,10 @@ import (
 )
 
 func doReadCache(path string, data interface{}) error {
+	if path == "" {
+		return nil
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -40,6 +44,10 @@ func readCache(path string, data interface{}) error {
 }
 
 func doWriteCache(path string, data interface{}) error {
+	if path == "" {
+		return nil
+	}
+
 	f, err := os.CreateTemp("", "sls")
 	if err != nil {
 		return err
