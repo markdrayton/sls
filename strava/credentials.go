@@ -36,6 +36,9 @@ func NewCredentials(clientId int, clientSecret, tokenPath string, hc *http.Clien
 func (c *Credentials) MustGetAccessToken() string {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	if len(c.token.AccessToken) != 0 {
+		return c.token.AccessToken
+	}
 	err := c.getToken()
 	if err != nil {
 		log.Fatal(err)
