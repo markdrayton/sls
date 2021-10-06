@@ -1,24 +1,18 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"sort"
-	"sync/atomic"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 
 	"github.com/markdrayton/sls/strava"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
-
-const numWorkers = 20
 
 type GearMap map[string]strava.Gear
 
@@ -35,99 +29,33 @@ type sls struct {
 	c             *strava.Client
 }
 
-func (s *sls) fetchActivities(epoch time.Time) (strava.Activities, error) {
-	g, ctx := errgroup.WithContext(context.Background())
-	const perPage = 100
-
-	workers := int32(numWorkers)
-	if epoch.Unix() > 0 {
-		workers = 1
-	}
-
-	pageNums := make(chan int)
-	pages := make(chan strava.Activities)
-
-	// Producer
-	done := make(chan struct{}, workers) // Buffer a done signal from each worker.
-	g.Go(func() error {
-		pageNum := 1
-		for {
-			select {
-			case pageNums <- pageNum:
-				pageNum += 1
-			case <-done:
-				close(pageNums)
-				return nil
-			}
-		}
-	})
-
-	// Workers
-	for i := 0; i < int(workers); i++ {
-		g.Go(func() error {
-			defer func() {
-				if atomic.AddInt32(&workers, -1) == 0 {
-					close(pages)
-				}
-			}()
-
-			for pageNum := range pageNums {
-				page, err := s.c.ActivityPage(s.athleteId, epoch, pageNum, perPage)
-				if err != nil {
-					return err
-				}
-				select {
-				case pages <- page:
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-				if len(page) < perPage {
-					done <- struct{}{}
-					return nil // No more work to do.
-				}
-			}
-			return nil
-		})
-	}
-
-	// Reducer
-	activities := make(strava.Activities, 0, perPage*workers)
-	g.Go(func() error {
-		for page := range pages {
-			activities = append(activities, page...)
-		}
-		done <- struct{}{}
-		sort.Sort(activities)
-		return nil
-	})
-
-	return activities, g.Wait()
-}
-
 func (s *sls) activities() (strava.Activities, error) {
 	var cached strava.Activities
 	if !s.refreshCache {
 		cached = s.readActivityCache()
 	}
+
 	epoch := time.Unix(0, 0)
 	if len(cached) > 0 {
 		epoch = cached[len(cached)-1].StartDate
 	}
 
-	new, err := s.fetchActivities(epoch)
+	new, err := s.c.Activities(s.athleteId, epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	return append(cached, new...), nil
+	all := append(cached, new...)
+	sort.Sort(all)
+	return all, nil
 }
 
 // Return a list of unique gear IDs
-func gearIds(a strava.Activities) []string {
+func gearIds(activities strava.Activities) []string {
 	gearIDMap := make(map[string]struct{})
-	for _, activity := range a {
-		if activity.GearId != "" {
-			gearIDMap[activity.GearId] = struct{}{}
+	for _, a := range activities {
+		if a.GearId != "" {
+			gearIDMap[a.GearId] = struct{}{}
 		}
 	}
 
@@ -138,42 +66,30 @@ func gearIds(a strava.Activities) []string {
 	return gearIds
 }
 
-func (s *sls) gears(a strava.Activities) (GearMap, error) {
-	cached := s.readGearCache()
+func (s *sls) gears(activities strava.Activities) (GearMap, error) {
 	gm := make(GearMap)
+	if !s.refreshCache {
+		gm = s.readGearCache()
+	}
 
-	ch := make(chan strava.Gear)
-	go func() {
-		for gear := range ch {
-			gm[gear.Id] = gear
-		}
-	}()
-
-	var g errgroup.Group
-	for _, gearId := range gearIds(a) {
-		gearId := gearId // https://git.io/JfGiM
-		// Rather than copying the cached values into `gm` unconditonally check to see
-		// if any activities still refer to a cached value, thus automatically pruning
-		// the cache of dangling entries.
-		gear, ok := cached[gearId]
-		if !s.refreshCache && ok {
-			ch <- gear
-		} else {
-			g.Go(func() error {
-				gear, err := s.c.Gear(gearId)
-				if err != nil {
-					return err
-				}
-				ch <- gear
-				return nil
-			})
+	missing := make([]string, 0)
+	for _, gearId := range gearIds(activities) {
+		_, ok := gm[gearId]
+		if !ok {
+			missing = append(missing, gearId)
 		}
 	}
 
-	err := g.Wait()
-	close(ch)
+	gears, err := s.c.Gears(missing)
+	if err != nil {
+		return gm, err
+	}
 
-	return gm, err
+	for _, gear := range gears {
+		gm[gear.Id] = gear
+	}
+
+	return gm, nil
 }
 
 func (s *sls) readActivityCache() strava.Activities {
