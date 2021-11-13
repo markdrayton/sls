@@ -70,7 +70,7 @@ $ go build
 
 ## Configuration
 
-Follow the [Strava API setup guide](https://developers.strava.com/docs/getting-started/). Grab the resulting client ID, client secret, and JSON token blob. Then:
+Follow the [Strava API setup guide](https://developers.strava.com/docs/getting-started/). Make sure you request the `read` and `activity:read_all` scopes to see all of your activities. Grab the resulting client ID, client secret, and JSON token blob. Then:
 
 ```sh
 $ mkdir ~/.sls
