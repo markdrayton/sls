@@ -40,16 +40,16 @@ func (c *Client) Activities(athleteId int64, epoch time.Time) (Activities, error
 	activities := make(Activities, 0)
 
 	urls := make(chan string)
-	done := make(chan struct{}) // stop yielding page URLs
+	stop := make(chan struct{}) // stop yielding page URLs
 	group.Go(func() error {
 		page := 1
-		stop := false
-		for !stop {
+		stopped := false
+		for !stopped {
 			url := fmt.Sprintf(urlActivities, athleteId, epoch.Unix(), page, perPage)
 			select {
 			case urls <- url:
-			case <-done:
-				stop = true
+			case <-stop:
+				stopped = true
 			}
 			page++
 		}
@@ -58,6 +58,7 @@ func (c *Client) Activities(athleteId int64, epoch time.Time) (Activities, error
 	})
 
 	responses := make(chan []byte)
+	complete := make(chan struct{}) // all activities received
 	go func() {
 		for response := range responses {
 			var page Activities
@@ -71,12 +72,13 @@ func (c *Client) Activities(athleteId int64, epoch time.Time) (Activities, error
 				// nonblocking send because the producer goroutine exits once told
 				// to stop.
 				select {
-				case done <- struct{}{}:
+				case stop <- struct{}{}:
 				default:
 				}
 			}
 			activities = append(activities, page...)
 		}
+		complete <- struct{}{}
 	}()
 
 	n := numWorkers
@@ -92,6 +94,7 @@ func (c *Client) Activities(athleteId int64, epoch time.Time) (Activities, error
 
 	err := group.Wait()
 	close(responses)
+	<-complete
 	return activities, err
 }
 
