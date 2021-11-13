@@ -187,7 +187,7 @@ func (s *sls) writeActivityCache(activities strava.Activities) {
 }
 
 func (s *sls) readGearCache() GearMap {
-	var gm GearMap
+	gm := make(GearMap)
 	readCache(s.gearCache, &gm)
 	return gm
 }
