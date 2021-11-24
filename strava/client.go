@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -137,6 +138,7 @@ func (c *Client) Gears(gearIds []string) ([]Gear, error) {
 func (c *Client) worker(ctx context.Context, urls chan string, responses chan []byte) func() error {
 	return func() error {
 		for rawurl := range urls {
+			log.Debug("fetching " + rawurl)
 			u, err := url.Parse(rawurl)
 			if err != nil {
 				return err

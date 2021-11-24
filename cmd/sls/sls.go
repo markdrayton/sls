@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"sort"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/markdrayton/sls/strava"
 	"github.com/spf13/pflag"
@@ -118,6 +119,7 @@ func init() {
 	pflag.BoolP("time", "t", false, "show activity duration")
 	pflag.BoolP("json", "j", false, "JSON output")
 	pflag.BoolP("refresh", "r", false, "fully refresh cache")
+	pflag.BoolP("debug", "d", false, "debug logging")
 	pflag.CommandLine.SortFlags = false
 	pflag.Parse()
 
@@ -137,6 +139,10 @@ func init() {
 	}
 
 	viper.BindPFlags(pflag.CommandLine)
+
+	if viper.GetBool("debug") {
+		log.SetLevel(log.DebugLevel)
+	}
 }
 
 func main() {
