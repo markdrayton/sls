@@ -200,8 +200,9 @@ func init() {
 	pflag.BoolP("all", "a", false, "show all columns")
 	pflag.BoolP("power", "p", false, "show power-related columns")
 	pflag.BoolP("time", "t", false, "show activity duration")
-	pflag.BoolP("refresh", "r", false, "refresh cache")
 	pflag.BoolP("json", "j", false, "JSON output")
+	pflag.BoolP("refresh", "r", false, "fully refresh cache")
+	pflag.CommandLine.SortFlags = false
 	pflag.Parse()
 
 	homeDir, err := os.UserHomeDir()
