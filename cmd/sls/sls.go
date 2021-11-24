@@ -224,11 +224,11 @@ func init() {
 
 func main() {
 	s := sls{
-		viper.GetInt64("athlete_id"),
-		viper.GetString("activity_cache"),
-		viper.GetString("gear_cache"),
-		viper.GetBool("refresh"),
-		strava.NewClient(
+		athleteId:     viper.GetInt64("athlete_id"),
+		activityCache: viper.GetString("activity_cache"),
+		gearCache:     viper.GetString("gear_cache"),
+		refreshCache:  viper.GetBool("refresh"),
+		c: strava.NewClient(
 			viper.GetInt("client_id"),
 			viper.GetString("client_secret"),
 			viper.GetString("token_path"),
