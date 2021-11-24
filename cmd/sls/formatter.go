@@ -164,7 +164,11 @@ func formatTime(af *ActivityFormatter, ca CompositeActivity) string {
 }
 
 func formatGear(af *ActivityFormatter, ca CompositeActivity) string {
-	return ca.G.Name
+	if ca.A.GearId != "" {
+		return ca.G.Name
+	} else {
+		return "-"
+	}
 }
 
 func formatName(af *ActivityFormatter, ca CompositeActivity) string {

@@ -250,8 +250,6 @@ func main() {
 		var gear strava.Gear
 		if _, ok := gears[a.GearId]; ok {
 			gear = gears[a.GearId]
-		} else {
-			gear = strava.Gear{Name: "-"}
 		}
 		compositeActivities = append(compositeActivities, CompositeActivity{a, gear})
 	}
