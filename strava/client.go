@@ -113,6 +113,7 @@ func (c *Client) Gears(gearIds []string) ([]Gear, error) {
 	})
 
 	responses := make(chan []byte)
+	complete := make(chan struct{}) // all gears received
 	go func() {
 		for response := range responses {
 			var gear Gear
@@ -122,6 +123,7 @@ func (c *Client) Gears(gearIds []string) ([]Gear, error) {
 			}
 			gears = append(gears, gear)
 		}
+		complete <- struct{}{}
 	}()
 
 	n := numWorkers
@@ -135,6 +137,7 @@ func (c *Client) Gears(gearIds []string) ([]Gear, error) {
 
 	err := group.Wait()
 	close(responses)
+	<-complete
 	return gears, err
 }
 
